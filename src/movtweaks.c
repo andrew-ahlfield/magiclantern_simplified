@@ -901,6 +901,11 @@ static void change_mov_time_limit(void* priv, int delta)
         mov_time_limit = 10;
         return;
     }
+    // The saved value comes from a config file, don't trust it to be in range.
+    if (mov_time_limit > MOV_TIME_LIMIT_MAX_MIN * 60)
+    {
+        mov_time_limit = MOV_TIME_LIMIT_MAX_MIN * 60;
+    }
 
     if (delta < 0)
     {
@@ -953,17 +958,67 @@ static void change_mov_time_limit(void* priv, int delta)
             .new_value = mov_time_limit * 1000,
             .size = 4,
             .description = "MOV time limit, high FPS"
-        }
+        },
+#endif
+#ifdef MVR_AVAIL_TIME_CAP
+        // Cap on the remaining time Canon shows on the LCD, in seconds.
+        {
+            .addr = (uint8_t *)MVR_AVAIL_TIME_CAP,
+            .old_value = 1799,
+            .new_value = mov_time_limit - 1,
+            .size = 4,
+            .description = "MOV remaining time cap"
+        },
 #endif
     };
     for (int i = 0; i < COUNT(patches); i++)
     {
         unpatch_memory((uint32_t)patches[i].addr);
     }
+
+#ifdef MVR_MAX_REC_SEC_ALLOC_1
+    // Some cams size the movie writer's per-frame tables for 1800s of
+    // frames, and fill them with no bounds check.  Recording for longer
+    // than that would run off the end, so grow the tables to match.
+    // These are only ever grown: below 30 min the stock size is kept.
+    // The 10s margin covers frames encoded while the stop is in progress.
+    struct patch alloc_patches[] = {
+        {
+            .addr = (uint8_t *)MVR_MAX_REC_SEC_ALLOC_1,
+            .old_value = 1800,
+            .new_value = mov_time_limit + 10,
+            .size = 4,
+            .description = "MOV sample table seconds"
+        },
+        {
+            .addr = (uint8_t *)MVR_MAX_REC_SEC_ALLOC_2,
+            .old_value = 1800,
+            .new_value = mov_time_limit + 10,
+            .size = 4,
+            .description = "MOV max frame count seconds"
+        },
+    };
+    for (int i = 0; i < COUNT(alloc_patches); i++)
+    {
+        unpatch_memory((uint32_t)alloc_patches[i].addr);
+    }
+#endif
+
     if (mov_time_limit == 30 * 60)
     {
         return;
     }
+
+#ifdef MVR_MAX_REC_SEC_ALLOC_1
+    if (mov_time_limit > 30 * 60)
+    {
+        // Tables first: never raise the limit unless they were grown.
+        if (apply_patches(alloc_patches, COUNT(alloc_patches)) != 0)
+        {
+            return;
+        }
+    }
+#endif
 
     apply_patches(patches, COUNT(patches));
     return;

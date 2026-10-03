@@ -114,6 +114,17 @@ Output size: 5496 x 3670
 // LOCAL_MOVIE_RECORD_SECCOUNT (ldr at 0xff52e1ec).  No high FPS limit on this cam.
 #define MVR_TIME_LIMIT_NORMAL_FPS 0xff52e3bc
 #define MOV_TIME_LIMIT_MAX_MIN 300
+// 1799 (seconds) cap applied in srmRequestCalcAvailMovie (ldr at 0xff1f9500),
+// this is the remaining time shown on the LCD.
+#define MVR_AVAIL_TIME_CAP 0xff1f9760
+// 1800 (seconds) literals that size the movie writer's per-frame tables:
+// movwAllocSampleInfo (ldr at 0xff1d3084) allocates 4 * fps * 1800 bytes per
+// table from MRRSC work memory at record start, and the SetSampleInfo path
+// (0xff1dabac) stores into them with no bounds check.  MOVW_GetMaxFrameCount
+// (ldr at 0xff0ea2ec) returns fps * 1800, which mvrRecStart uses to size its
+// own buffers.  Both must grow with the time limit.
+#define MVR_MAX_REC_SEC_ALLOC_1 0xff1d32ec
+#define MVR_MAX_REC_SEC_ALLOC_2 0xff0ea564
 //~ #define MVR_BYTES_WRITTEN MEM((0x1A4 + MVR_516_STRUCT)) //%s : End(%d) (%5dKB/S)
 
 #define AE_STATE (*(int8_t*)(0x7F5A4 + 0x1C)) 
