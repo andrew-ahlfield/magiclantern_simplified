@@ -21,3 +21,6 @@
 #define FEATURE_GPS_TWEAKS
 
 #define FEATURE_AUDIO_REMOTE_SHOT
+
+// We are able to override the MOV 29:59 limit
+#define FEATURE_OVERRIDE_MOVIE_30_MIN_LIMIT

@@ -110,6 +110,10 @@ Output size: 5496 x 3670
 
 #define MVR_FRAME_NUMBER  (*(int*)(0x1FC + MVR_516_STRUCT)) // in mvrExpStarted
 #define MVR_BYTES_WRITTEN MEM((0xb0 + MVR_516_STRUCT))  //Not sure where to find but works.
+// 1799000 (29m59s) literal, compared against elapsed ms in DlgLiveView.c
+// LOCAL_MOVIE_RECORD_SECCOUNT (ldr at 0xff52e1ec).  No high FPS limit on this cam.
+#define MVR_TIME_LIMIT_NORMAL_FPS 0xff52e3bc
+#define MOV_TIME_LIMIT_MAX_MIN 300
 //~ #define MVR_BYTES_WRITTEN MEM((0x1A4 + MVR_516_STRUCT)) //%s : End(%d) (%5dKB/S)
 
 #define AE_STATE (*(int8_t*)(0x7F5A4 + 0x1C)) 

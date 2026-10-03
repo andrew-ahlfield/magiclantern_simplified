@@ -869,6 +869,11 @@ void smooth_iso_step()
 #ifdef FEATURE_OVERRIDE_MOVIE_30_MIN_LIMIT
 static CONFIG_INT("movie.time_limit", mov_time_limit, 30 * 60);
 
+// Longest limit the menu offers, in minutes.  Cams can override in consts.h.
+#ifndef MOV_TIME_LIMIT_MAX_MIN
+#define MOV_TIME_LIMIT_MAX_MIN 180
+#endif
+
 static MENU_UPDATE_FUNC(print_mov_time_limit)
 {
     if (mov_time_limit >= 60)
@@ -909,13 +914,13 @@ static void change_mov_time_limit(void* priv, int delta)
             mov_time_limit -= 5 * 60;
         else if (mov_time_limit <= 90 * 60)
             mov_time_limit -= 15 * 60;
-        else if (mov_time_limit <= 180 * 60)
+        else
             mov_time_limit -= 30 * 60;
     }
     else if (delta > 0)
     {
-        if (mov_time_limit >= 180 * 60)
-            mov_time_limit = 180 * 60;
+        if (mov_time_limit >= MOV_TIME_LIMIT_MAX_MIN * 60)
+            mov_time_limit = MOV_TIME_LIMIT_MAX_MIN * 60;
         else if (mov_time_limit >= 90 * 60)
             mov_time_limit += 30 * 60;
         else if (mov_time_limit >= 30 * 60)
@@ -933,7 +938,7 @@ static void change_mov_time_limit(void* priv, int delta)
     // We have our target max time. If user requests 30 min,
     // we revert to stock, which technically is 29m 59s.
     // Otherwise, we patch in the new limit.
-    struct patch patches[2] = {
+    struct patch patches[] = {
         {
             .addr = (uint8_t *)MVR_TIME_LIMIT_NORMAL_FPS,
             .old_value = 0x1b7358, // 29m59s
@@ -941,6 +946,7 @@ static void change_mov_time_limit(void* priv, int delta)
             .size = 4,
             .description = "MOV time limit"
         },
+#ifdef MVR_TIME_LIMIT_HIGH_FPS
         {
             .addr = (uint8_t *)MVR_TIME_LIMIT_HIGH_FPS,
             .old_value = 0x6d9e8, // 7m29s
@@ -948,15 +954,18 @@ static void change_mov_time_limit(void* priv, int delta)
             .size = 4,
             .description = "MOV time limit, high FPS"
         }
+#endif
     };
-    unpatch_memory((uint32_t)patches[0].addr);
-    unpatch_memory((uint32_t)patches[1].addr);
+    for (int i = 0; i < COUNT(patches); i++)
+    {
+        unpatch_memory((uint32_t)patches[i].addr);
+    }
     if (mov_time_limit == 30 * 60)
     {
         return;
     }
 
-    apply_patches(patches, 2);
+    apply_patches(patches, COUNT(patches));
     return;
 }
 #endif // FEATURE_OVERRIDE_MOVIE_30_MIN_LIMIT
@@ -1046,10 +1055,10 @@ static struct menu_entry mov_menus[] = {
         .update = print_mov_time_limit,
         .select = change_mov_time_limit,
         .min = 1,
-        .max = 180,
+        .max = MOV_TIME_LIMIT_MAX_MIN,
         .help = "Change 29:59 movie recording limit",
         .help2 = "Too long recording makes empty files on ExFAT, ok on FAT32",
-    }
+    },
     #endif
     #ifdef FEATURE_GRADUAL_EXPOSURE
     {
