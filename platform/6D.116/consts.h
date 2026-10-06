@@ -113,7 +113,10 @@ Output size: 5496 x 3670
 // 1799000 (29m59s) literal, compared against elapsed ms in DlgLiveView.c
 // LOCAL_MOVIE_RECORD_SECCOUNT (ldr at 0xff52e1ec).  No high FPS limit on this cam.
 #define MVR_TIME_LIMIT_NORMAL_FPS 0xff52e3bc
-#define MOV_TIME_LIMIT_MAX_MIN 300
+// Tested on a physical 6D: with the limit at 270 or 300 min, stopping even a
+// short recording gives Err 70, 240 and below are fine.  The frame tables are
+// sized from the limit, so the larger ones presumably don't fit.
+#define MOV_TIME_LIMIT_MAX_MIN 240
 // 1799 (seconds) cap applied in srmRequestCalcAvailMovie (ldr at 0xff1f9500),
 // this is the remaining time shown on the LCD.
 #define MVR_AVAIL_TIME_CAP 0xff1f9760

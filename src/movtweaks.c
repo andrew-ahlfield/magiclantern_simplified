@@ -356,6 +356,10 @@ static int wait_for_lv_err_msg(int wait) // 1 = msg appeared, 0 = did not appear
     return 0;
 }
 
+#ifdef FEATURE_OVERRIDE_MOVIE_30_MIN_LIMIT
+static int mov_time_limit_seconds();
+#endif
+
 void movtweak_step()
 {
     #ifdef FEATURE_MOVIE_REC_KEY
@@ -364,7 +368,34 @@ void movtweak_step()
 
     #ifdef FEATURE_MOVIE_RESTART
         static int recording_prev = 0;
-        
+
+        #ifdef FEATURE_OVERRIDE_MOVIE_30_MIN_LIMIT
+        // Canon's movie writer has hard per-recording limits that the time
+        // limit override can't lift (on 6D: 6 files, so about 25GB).  With
+        // Movie Restart on, treat the time limit as a segment length: when
+        // Canon stops because the limit was reached, start a new recording.
+        // A stop before the limit is the user's, and is left alone.
+        static int rec_start_clock = 0;
+        if (RECORDING_H264 && !recording_prev)
+        {
+            rec_start_clock = get_seconds_clock();
+        }
+        if (!RECORDING_H264 && recording_prev && movie_restart)
+        {
+            int elapsed = get_seconds_clock() - rec_start_clock;
+            if (elapsed >= mov_time_limit_seconds() - 5)
+            {
+                // Canon may still be finalising files; movie_start() gives
+                // up quietly when the cam isn't ready, so keep trying.
+                for (int i = 0; i < 60 && !RECORDING_H264; i++)
+                {
+                    msleep(500);
+                    movie_start();
+                }
+            }
+        }
+        #endif
+
         #if defined(CONFIG_5D2) || defined(CONFIG_50D) || defined(CONFIG_7D)
         if(!RECORDING_H264 && recording_prev && !movie_was_stopped_by_set) // see also gui.c
         #else
@@ -868,6 +899,11 @@ void smooth_iso_step()
 
 #ifdef FEATURE_OVERRIDE_MOVIE_30_MIN_LIMIT
 static CONFIG_INT("movie.time_limit", mov_time_limit, 30 * 60);
+
+static int mov_time_limit_seconds()
+{
+    return mov_time_limit;
+}
 
 // Longest limit the menu offers, in minutes.  Cams can override in consts.h.
 #ifndef MOV_TIME_LIMIT_MAX_MIN
